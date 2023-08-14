@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %} {{ user.get_full_name }} {% endblock %}
+
+{% block content %}
+<section>
+  <div class="row d-flex">
+    <div class="col col-md-9">
+      <div class="d-flex text-black">
+        <div class="flex-shrink-0">
+          <img src="{{user.image_url}}" alt="Generic placeholder image" class="img-fluid"
+            style="width: 180px; border-radius: 5px;">
+        </div>
+        <div class="m-3">
+          <h1 class="mb-3">{{user.get_full_name}}</h1>
+          <form action="/users/{{user.id}}/delete" method="POST">
+            <a href="/users/{{user.id}}/edit" class="btn btn-primary">Edit</a>
+            <button type="submit" class="btn btn-danger">Delete</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="mt-5">
+  <a href="/users" class="btn btn-outline-primary">Go Back</a>
+</div>
+{% endblock %}
