@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 from app import app
-from models import db, User
+from models import db, User, Post
 
 DEFAULT_IMAGE_URL='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRI6evl-nRSxEm9Yl3WDpM5qmHAcQMZlLOXtMp7x6o&s'
 
@@ -27,13 +27,18 @@ class UserViewsTestCase(TestCase):
         """Add sample pet."""
 
         User.query.delete()
+        Post.query.delete()
 
         user = User(first_name="TestFirstName", last_name="TestLastName")
         db.session.add(user)
         db.session.commit()
-
-        self.id = user.id
+        
+        post = Post(title="Test Title Post", content="Test Content Post", user_id=user.id)
+        db.session.add(post)
+        db.session.commit()
+        
         self.user = user
+        self.post = post
 
     def tearDown(self):
         """Clean up any fouled transaction."""
@@ -51,13 +56,12 @@ class UserViewsTestCase(TestCase):
     def test_show_user(self):
         with app.test_client() as client:
             
-            self.user = {"first-name":"Name", "last-name": "Cognome", "image-url":"www.google.com"}
-            resp = client.get(f"/users/{self.id}")
+            resp = client.get(f"/users/{self.user.id}")
             html = resp.get_data(as_text=True)
 
             self.assertEqual(resp.status_code, 200)
-            self.assertIn('<h1 class="mb-3">TestFirstName TestLastName</h1>', html)
-            self.assertIn(f'<a href="/users/{self.id}/edit" class="btn btn-primary">Edit</a>', html)
+            self.assertIn('TestFirstName TestLastName', html)
+            self.assertIn(f'<button formmethod="GET" formaction="/users/{self.user.id}/edit" class="btn btn-primary"> Edit </button>', html)
             
     def test_create_user(self):
         with app.test_client() as client:
@@ -67,32 +71,58 @@ class UserViewsTestCase(TestCase):
             
             self.assertEqual(resp.status_code, 200)
             self.assertIn("Name Cognome", html)
-
-################################            
+     
     def test_edit_user(self):
         with app.test_client() as client:
             d = {"first_name":"John", "last_name": "TestLastName", "image-url":"www.qualcosa.com"}
-            resp = client.post(f'/users/{self.id}/edit', data=d, follow_redirects=True)
+            resp = client.post(f'/users/{self.user.id}/edit', data=d, follow_redirects=True)
             html = resp.get_data(as_text = True)
             self.assertIn("John TestLastName", html)
             self.assertEqual(resp.status_code, 200)
             
-#                       
-#    def test_edit_user(self):
-#        with app.test_client() as client:
-#            d = {"first_name":"John", "last_name": "TestLastName", "image-url":"www.qualcosa.com"}
-#            resp = client.post("/users/1/edit", data=d, follow_redirects=True)
-#
-#            user = User.query.get(1)
-#            self.assertEqual(user.first_name, 'John')
-#            self.assertEqual(user.last_name, 'TestLastName')
-#            self.assertEqual(user.image_url,'www.qualcosa.com')	
-   
-##############################################################
-            
     def test_delete(self):
         with app.test_client() as client:
-            resp = client.post(f'/users/{self.id}/delete')
-            user = User.query.get(self.id)
+            resp = client.post(f'/users/{self.user.id}/delete')
+            user = User.query.get(self.user.id)
 
             self.assertFalse(user)
+            
+#################################################################################################################            
+            
+    def test_show_post(self):
+        with app.test_client() as client:
+            
+            resp = client.get(f"/posts/{self.post.id}")
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn('<h1>Test Title Post</h1>', html)
+            self.assertIn(f'<button formmethod="GET" formaction="/posts/{self.post.id}/edit" class="btn btn-primary"> Edit </button>', html)
+            
+    def test_create_post(self):
+        with app.test_client() as client:
+            resp = client.post(f"/users/{self.user.id}/posts/new", 
+                    data={'title': 'NewTestTitle', 'pContent': 'NewTestContent'}, follow_redirects=True)
+            html = resp.get_data(as_text = True)
+            
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn("NewTestTitle", html)
+            
+     
+    def test_edit_post(self):
+        with app.test_client() as client:
+            resp = client.post(f'/posts/{self.post.id}/edit', 
+                    data={'title': 'FirstTestPost', 'pContent': 'First Post Test Content'}, follow_redirects=True)
+            
+            html = resp.get_data(as_text = True)
+            
+            self.assertIn("FirstTestPost", html)
+            self.assertIn(f'<a href="/posts/{self.post.id}">FirstTestPost</a>', html)
+            self.assertEqual(resp.status_code, 200)
+            
+    def test_delete_post(self):
+        with app.test_client() as client:
+            resp = client.post(f'/posts/{self.post.id}/delete')
+            post = Post.query.get(self.post.id)
+
+            self.assertFalse(post)
