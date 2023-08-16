@@ -49,7 +49,7 @@ def list():
 @app.route('/users/new')
 def add_user():
     """Show an add form for users."""
-    return render_template('add.html')
+    return render_template('user/add.html')
 
 @app.route('/users/new', methods=["POST"])
 def create_user():
