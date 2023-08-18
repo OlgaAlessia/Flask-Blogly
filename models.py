@@ -51,11 +51,13 @@ class Post(db.Model):
     created_at = db.Column(db.DateTime, default = datetime.datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     
+    tags = db.relationship('Tag', secondary="post_tags", cascade="all, delete", backref='posts') 
+    
     def __repr__(self):
-        """Show info about user."""
+        """Show info about post."""
         
         p = self
-        return f"<Post {p.id} {p.title} {p.content} {p.created_at} >"
+        return f"<Post {p.id} {p.title} {p.content} {p.created_at}>"
     
     @property
     def timestamp(self):
@@ -63,3 +65,28 @@ class Post(db.Model):
             May 1 2015, 10:30 AM """
         
         return self.created_at.strftime("%b %-d %Y, %H:%M %p")
+    
+
+class Tag(db.Model):
+    
+    __tablename__ = 'tags'
+    
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(50),nullable=False, unique=True)
+        
+    def __repr__(self):
+        """Show info about tag."""
+
+        return f"<Tag {self.id} {self.name}>"
+    
+class PostTag(db.Model):
+    
+    __tablename__ = 'post_tags'
+    
+    post_id = db.Column(db.Integer, db.ForeignKey("posts.id", ondelete="CASCADE"), primary_key=True)
+    tag_id = db.Column(db.Integer, db.ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True)
+        
+    def __repr__(self):
+        """Show info about post_tags."""
+
+        return f"<PostTag {self.post_id} {self.tag_id}>"

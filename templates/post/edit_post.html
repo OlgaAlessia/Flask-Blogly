@@ -19,6 +19,13 @@
         <div class="col-sm-6 text-right">
             <a href="/users/{{post.user_id}}" class="btn btn-outline-primary"> Cancel </a>
             <button type="submit" class="btn btn-success"> Edit </button>
-        <div>
+        </div>
+        {% for tag in tags %}  
+        <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="{{tag.id}}" name="tags" value="{{tag.id}}"
+            {% for tag_tags in post.tags %} {% if tag.id == tag_tags.id %} checked {% endif %} {% endfor %} >
+            <label class="form-check-label" for="tags">{{ tag.name }}</label>
+        </div>
+        {% endfor %} 
     </form>
 {% endblock %}

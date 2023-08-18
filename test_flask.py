@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 from app import app
-from models import db, User, Post
+from models import db, User, Post, Tag, PostTag
 
 DEFAULT_IMAGE_URL='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRI6evl-nRSxEm9Yl3WDpM5qmHAcQMZlLOXtMp7x6o&s'
 
@@ -28,18 +28,23 @@ class UserViewsTestCase(TestCase):
 
         User.query.delete()
         Post.query.delete()
-
+        Tag.query.delete()
+        
         user = User(first_name="TestFirstName", last_name="TestLastName")
         db.session.add(user)
         db.session.commit()
         
         post = Post(title="Test Title Post", content="Test Content Post", user_id=user.id)
-        db.session.add(post)
+        tag = Tag(name="TestTag")
+                
+        db.session.add_all([ post, tag ])
         db.session.commit()
         
         self.user = user
         self.post = post
-
+        self.tag = tag
+        
+        
     def tearDown(self):
         """Clean up any fouled transaction."""
 
@@ -126,3 +131,100 @@ class UserViewsTestCase(TestCase):
             post = Post.query.get(self.post.id)
 
             self.assertFalse(post)
+            
+            
+            
+#################################################################################################################            
+            
+    def test_list_tag(self):
+        with app.test_client() as client:
+            resp = client.get("/tags")
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn('TestTag', html)
+            
+    def test_show_tag(self):
+        with app.test_client() as client:
+            
+            resp = client.get(f"/tags/{self.tag.id}")
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn('<h1>TestTag</h1>', html)
+            self.assertIn('<h4 class="my-3">No post with this tag</h4>', html)
+           
+    def test_show_tag2(self):
+        with app.test_client() as client:
+            
+            post = self.post
+            tag_id = [self.tag.id, ]
+            post.tags = Tag.query.filter(Tag.id.in_(tag_id)).all()
+            
+            db.session.add(post)
+            db.session.commit()
+            
+            resp = client.get(f"/tags/{self.tag.id}")
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn('<h1>TestTag</h1>', html)
+            self.assertIn(f'<li><a href="/posts/{post.id}">{post.title}</a></li>', html)
+             
+            
+    def test_create_tag(self):
+        with app.test_client() as client:
+            resp = client.post("/tags/new", 
+                    data={'name': 'NewTestTag'}, follow_redirects=True)
+            html = resp.get_data(as_text = True)
+            
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn("A new tag was create", html)
+    
+    
+    def test_create_tag2(self):
+        with app.test_client() as client:
+            
+            resp = client.post("/tags/new", 
+                    data={'name': 'NewTestTag2', 'posts': f'{self.post.id}' }, follow_redirects=True)
+            html = resp.get_data(as_text = True)
+            
+            tag = Tag.query.filter_by(name='NewTestTag2').one()
+            
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn(f'<a href="/tags/{tag.id}">{tag.name}</a>', html)
+            
+            
+    def test_edit_tag(self):
+        with app.test_client() as client:
+            resp = client.post(f'/tags/{self.tag.id}/edit', 
+                    data={'name': 'EditTag'}, follow_redirects=True)
+            
+            html = resp.get_data(as_text = True)
+            
+            self.assertIn("EditTag", html)
+            self.assertEqual(resp.status_code, 200)
+    
+    def test_edit_tag2(self):
+        with app.test_client() as client:
+            
+            new_post = Post(title="Test Title Tag", content="Test Content Post w/tag", user_id=self.user.id)
+            db.session.add(new_post)
+            db.session.commit()
+            
+            
+            resp = client.post(f'/tags/{self.tag.id}/edit',
+                    data={'name': 'NewTestTag3', 'posts': f'{new_post.id}' }, follow_redirects=True)
+            
+            html = resp.get_data(as_text = True)
+            
+            self.assertIn("NewTestTag3", html)
+            self.assertIn(f'<a href="/posts/{new_post.id}">Test Title Tag</a>', html)
+            self.assertEqual(resp.status_code, 200)
+            
+    def test_delete_tag(self):
+        with app.test_client() as client:
+            resp = client.post(f'/tags/{self.tag.id}/delete')
+            tag = Tag.query.get(self.tag.id)
+
+            self.assertFalse(tag)
